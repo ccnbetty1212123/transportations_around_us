@@ -2,87 +2,109 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>認識日常交通工具</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>交通工具練習</title>
     <style>
-        :root { --bg: #f0f4f8; --btn: #4caf50; }
+        :root { --bg: #f0f4f8; --btn: #4caf50; --text: #2e7d32; }
         body, html { 
-            margin: 0; padding: 0; width: 100vw; height: 100vh; 
-            overflow: hidden; font-family: 'PingFang HK', sans-serif; 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; font-family: 'PingFang HK', 'Helvetica Neue', sans-serif; 
             background: var(--bg); touch-action: manipulation;
         }
 
-        /* Orientation Logic */
-        #orientation-overlay { 
-            position: fixed; inset: 0; background: #333; color: white; 
+        /* Preparation & Orientation Screen */
+        #prep-screen {
+            position: fixed; inset: 0; background: white; 
             display: flex; flex-direction: column; align-items: center; 
-            justify-content: center; z-index: 9999; text-align: center; 
+            justify-content: center; z-index: 10000; text-align: center;
+            padding: 20px;
         }
-        @media screen and (orientation: landscape) { #orientation-overlay { display: none; } }
 
+        .orientation-icon {
+            font-size: 60px; margin-bottom: 20px;
+            animation: rotate 2s infinite ease-in-out;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(-90deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        /* Only show game content when in landscape */
         .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
 
+        @media screen and (orientation: portrait) {
+            #game-content { display: none; }
+            #prep-screen { display: flex; }
+        }
+
+        @media screen and (orientation: landscape) {
+            #prep-screen { display: none; }
+            #game-content { display: block; }
+        }
+
         button { 
-            padding: 15px 50px; font-size: 28px; cursor: pointer; 
+            padding: 18px 60px; font-size: 24px; cursor: pointer; 
             background: var(--btn); color: white; border: none; 
             border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: transform 0.1s;
+            transition: transform 0.1s; -webkit-tap-highlight-color: transparent;
         }
         button:active { transform: scale(0.95); }
 
         /* Game Layout */
         #items-grid { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            grid-template-rows: repeat(2, 1fr); 
-            gap: 20px; width: 85%; height: 75%; 
+            display: grid; grid-template-columns: repeat(3, 1fr); 
+            grid-template-rows: repeat(2, 1fr); gap: 15px; 
+            width: 90%; height: 70%; margin-top: 40px;
         }
         .item-container { 
             display: flex; justify-content: center; align-items: center; 
-            background: white; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            cursor: pointer; position: relative; overflow: hidden;
+            background: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            cursor: pointer; overflow: hidden;
         }
-
-        .transport-img { 
-            width: 80%; height: 80%; object-fit: contain; 
-            transition: transform 0.2s ease-in;
-        }
+        .transport-img { width: 75%; height: 75%; object-fit: contain; transition: transform 0.2s; }
 
         /* Animations */
-        .drive-out { transform: translateX(500px) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
-        .fly-out { transform: translate(500px, -300px) rotate(-15deg) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
+        .drive-out { transform: translateX(100vw) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
+        .fly-out { transform: translate(100vw, -100vh) rotate(-15deg) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
         .shake { animation: shake 0.4s; }
-
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-10px); }
             75% { transform: translateX(10px); }
         }
 
-        #progress { position: absolute; top: 15px; font-size: 24px; font-weight: bold; color: #2e7d32; }
-        #congrats-emoji { font-size: 100px; margin-bottom: 20px; }
+        #progress { position: absolute; top: 10px; font-size: 20px; font-weight: bold; color: var(--text); }
     </style>
 </head>
 <body>
 
-    <div id="orientation-overlay"><h2>請將螢幕橫置以進行遊戲 🔄</h2></div>
-
-    <div id="welcome-screen" class="screen">
-        <h1 style="color: #2e7d32; font-size: 40px;">交通工具練習</h1>
-        <p style="font-size: 20px; color: #666;">聽一聽，選出正確的交通工具</p>
-        <button id="btn-start">開始遊戲</button>
+    <div id="prep-screen">
+        <div class="orientation-icon">📱🔄</div>
+        <h2 style="color: var(--text);">請將螢幕橫置以進行遊戲</h2>
+        <h3 style="color: #666; font-weight: normal; margin-bottom: 30px;">Please rotate your device to landscape</h3>
+        <button id="btn-ready">開始 / START</button>
     </div>
 
-    <div id="game-screen" class="screen hidden">
-        <div id="progress">第 <span id="current-count">1</span> / 10 題</div>
-        <div id="items-grid"></div>
-    </div>
+    <div id="game-content">
+        <div id="welcome-screen" class="screen">
+            <h1 style="color: var(--text); font-size: 40px;">交通工具練習</h1>
+            <p style="font-size: 20px; color: #666;">聽一聽，選出正確的交通工具</p>
+            <button id="btn-start">進入練習</button>
+        </div>
 
-    <div id="congrats-screen" class="screen hidden">
-        <div id="congrats-emoji">🎉🥳🎊</div>
-        <h1 style="color: #2e7d32;">恭喜你完成練習！</h1>
-        <button onclick="location.reload()">再玩一次</button>
+        <div id="game-screen" class="screen hidden">
+            <div id="progress">第 <span id="current-count">1</span> / 10 題</div>
+            <div id="items-grid"></div>
+        </div>
+
+        <div id="congrats-screen" class="screen hidden">
+            <div style="font-size: 80px;">🎉</div>
+            <h1 style="color: var(--text);">太棒了！完成練習！</h1>
+            <button onclick="location.reload()">再玩一次</button>
+        </div>
     </div>
 
     <script>
@@ -97,7 +119,6 @@
 
         let trials = [];
         let currentTrialIndex = 0;
-        let currentTarget = null;
         let isLocked = false;
         let currentAudio = null;
 
@@ -105,18 +126,33 @@
         const sndIncorrect = new Audio('assets/audio/incorrect.mp3');
         const sndFanfare = new Audio('assets/audio/congrats_fanfare.mp3');
 
-        // Logic to build 10 trials with constraints
+        // Critical for iOS: Unlock audio on first user interaction
+        function unlockAudio() {
+            const sounds = [sndCorrect, sndIncorrect, sndFanfare];
+            sounds.forEach(s => {
+                s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(e => {});
+            });
+        }
+
+        document.getElementById('btn-ready').addEventListener('click', () => {
+            unlockAudio();
+            // If already landscape, this button just hides the overlay
+            // Screen orientation CSS handles the rest
+        });
+
+        document.getElementById('btn-start').addEventListener('click', () => {
+            setupGame();
+            showScreen('game-screen');
+            startTrial();
+        });
+
         function setupGame() {
-            // 1. Ensure all 6 appear once
             let deck = [...transportItems].sort(() => Math.random() - 0.5);
             trials = [...deck];
-
-            // 2. Fill to 10 ensuring no consecutive repeats
             while (trials.length < 10) {
                 let lastItem = trials[trials.length - 1];
-                let possibleOptions = transportItems.filter(i => i.id !== lastItem.id);
-                let randomChoice = possibleOptions[Math.floor(Math.random() * possibleOptions.length)];
-                trials.push(randomChoice);
+                let possible = transportItems.filter(i => i.id !== lastItem.id);
+                trials.push(possible[Math.floor(Math.random() * possible.length)]);
             }
         }
 
@@ -126,34 +162,22 @@
                 sndFanfare.play();
                 return;
             }
-
             isLocked = false;
-            currentTarget = trials[currentTrialIndex];
             document.getElementById('current-count').innerText = currentTrialIndex + 1;
-            
             renderGrid();
-            
-            // Voice: "我要搭..." + target word
-            setTimeout(() => { playVoice(currentTarget.voice); }, 500);
+            setTimeout(() => { playVoice(trials[currentTrialIndex].voice); }, 500);
         }
 
         function renderGrid() {
             const grid = document.getElementById('items-grid');
             grid.innerHTML = '';
-            
-            // Randomize display order for the grid
-            const displayOrder = [...transportItems].sort(() => Math.random() - 0.5);
-            
-            displayOrder.forEach(item => {
+            [...transportItems].sort(() => Math.random() - 0.5).forEach(item => {
                 const container = document.createElement('div');
                 container.className = 'item-container';
                 container.onclick = () => handleChoice(item, container);
-                
                 const img = document.createElement('img');
                 img.src = `assets/images/${item.img}`;
                 img.className = 'transport-img';
-                img.alt = item.id;
-                
                 container.appendChild(img);
                 grid.appendChild(container);
             });
@@ -161,22 +185,14 @@
 
         function handleChoice(item, element) {
             if (isLocked) return;
-
-            const img = element.querySelector('.transport-img');
-
-            if (item.id === currentTarget.id) {
-                // Correct
+            const target = trials[currentTrialIndex];
+            if (item.id === target.id) {
                 isLocked = true;
                 sndCorrect.play();
-                
-                // Animate driving or flying out
-                const animClass = item.type === 'fly' ? 'fly-out' : 'drive-out';
-                img.classList.add(animClass);
-
+                element.querySelector('.transport-img').classList.add(item.type === 'fly' ? 'fly-out' : 'drive-out');
                 currentTrialIndex++;
                 setTimeout(startTrial, 1200);
             } else {
-                // Incorrect
                 sndIncorrect.play();
                 element.classList.add('shake');
                 setTimeout(() => element.classList.remove('shake'), 400);
@@ -184,28 +200,15 @@
         }
 
         function playVoice(fileName) {
-            if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
-            // Assuming your audio files are named like 'bus.mp3' 
-            // and you have a prefix audio "我要搭" combined or separate.
-            // If separate, you'd play "prefix.mp3" then "fileName"
+            if (currentAudio) { currentAudio.pause(); }
             currentAudio = new Audio(`assets/audio/${fileName}`);
-            currentAudio.play().catch(e => console.log("Audio play blocked"));
+            currentAudio.play().catch(() => console.log("Audio waiting for interaction"));
         }
 
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         }
-
-        document.getElementById('btn-start').addEventListener('click', () => {
-            // Unlock audio context for mobile browsers
-            [sndCorrect, sndIncorrect, sndFanfare].forEach(s => {
-                s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(()=>{});
-            });
-            setupGame();
-            showScreen('game-screen');
-            startTrial();
-        });
     </script>
 </body>
 </html>
