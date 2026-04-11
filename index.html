@@ -3,16 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>交通工具練習</title>
+    <title>交通工具練習 Transport Exercise</title>
     <style>
-        :root { --bg: #f0f4f8; --btn: #4caf50; --text: #2e7d32; }
+        :root { 
+            --bg: #f0f4f8; 
+            --btn: #4caf50; 
+            --btn-hover: #45a049;
+            --text: #2e7d32; 
+        }
+
         body, html { 
             margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; font-family: 'PingFang HK', 'Helvetica Neue', sans-serif; 
+            overflow: hidden; font-family: 'PingFang HK', 'Helvetica Neue', Helvetica, Arial, sans-serif; 
             background: var(--bg); touch-action: manipulation;
         }
 
-        /* Preparation & Orientation Screen */
+        /* Preparation & Orientation Overlay */
         #prep-screen {
             position: fixed; inset: 0; background: white; 
             display: flex; flex-direction: column; align-items: center; 
@@ -22,19 +28,20 @@
 
         .orientation-icon {
             font-size: 60px; margin-bottom: 20px;
-            animation: rotate 2s infinite ease-in-out;
+            animation: rotateDevice 2s infinite ease-in-out;
         }
 
-        @keyframes rotate {
+        @keyframes rotateDevice {
             0% { transform: rotate(0deg); }
             50% { transform: rotate(-90deg); }
             100% { transform: rotate(0deg); }
         }
 
-        /* Only show game content when in landscape */
+        /* Screen Management */
         .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
 
+        /* Logic to show/hide based on orientation */
         @media screen and (orientation: portrait) {
             #game-content { display: none; }
             #prep-screen { display: flex; }
@@ -45,53 +52,69 @@
             #game-content { display: block; }
         }
 
+        /* Buttons */
         button { 
-            padding: 18px 60px; font-size: 24px; cursor: pointer; 
+            padding: 18px 60px; font-size: 26px; cursor: pointer; 
             background: var(--btn); color: white; border: none; 
-            border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: transform 0.1s; -webkit-tap-highlight-color: transparent;
+            border-radius: 50px; box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+            transition: transform 0.1s, background 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            font-weight: bold;
         }
-        button:active { transform: scale(0.95); }
+        button:active { transform: scale(0.95); background: var(--btn-hover); }
 
-        /* Game Layout */
+        /* Game Grid */
         #items-grid { 
-            display: grid; grid-template-columns: repeat(3, 1fr); 
-            grid-template-rows: repeat(2, 1fr); gap: 15px; 
-            width: 90%; height: 70%; margin-top: 40px;
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            grid-template-rows: repeat(2, 1fr); 
+            gap: 20px; 
+            width: 85%; height: 75%; 
+            margin-top: 30px;
         }
         .item-container { 
             display: flex; justify-content: center; align-items: center; 
-            background: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            cursor: pointer; overflow: hidden;
+            background: white; border-radius: 20px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            cursor: pointer; overflow: hidden; position: relative;
         }
-        .transport-img { width: 75%; height: 75%; object-fit: contain; transition: transform 0.2s; }
+        .transport-img { 
+            width: 80%; height: 80%; 
+            object-fit: contain; 
+            transition: transform 0.2s; 
+        }
 
-        /* Animations */
+        /* Animation Classes */
+        /* Drive Right (Default) */
         .drive-out { transform: translateX(100vw) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
+        /* Drive Left (Bus, Tram, Minibus) */
+        .drive-out-left { transform: translateX(-100vw) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
+        /* Fly Away */
         .fly-out { transform: translate(100vw, -100vh) rotate(-15deg) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
+        
         .shake { animation: shake 0.4s; }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
+            25% { transform: translateX(-12px); }
+            75% { transform: translateX(12px); }
         }
 
-        #progress { position: absolute; top: 10px; font-size: 20px; font-weight: bold; color: var(--text); }
+        #progress { position: absolute; top: 15px; font-size: 22px; font-weight: bold; color: var(--text); }
     </style>
 </head>
 <body>
 
     <div id="prep-screen">
         <div class="orientation-icon">📱🔄</div>
-        <h2 style="color: var(--text);">請將螢幕橫置以進行遊戲</h2>
+        <h2 style="color: var(--text); margin-bottom: 5px;">請將螢幕橫置以進行遊戲</h2>
         <h3 style="color: #666; font-weight: normal; margin-bottom: 30px;">Please rotate your device to landscape</h3>
         <button id="btn-ready">開始 / START</button>
     </div>
 
     <div id="game-content">
         <div id="welcome-screen" class="screen">
-            <h1 style="color: var(--text); font-size: 40px;">交通工具練習</h1>
-            <p style="font-size: 20px; color: #666;">聽一聽，選出正確的交通工具</p>
+            <h1 style="color: var(--text); font-size: 48px; margin-bottom: 10px;">交通工具練習</h1>
+            <p style="font-size: 22px; color: #555; margin-bottom: 40px;">聽一聽，選出正確的交通工具</p>
             <button id="btn-start">進入練習</button>
         </div>
 
@@ -101,20 +124,21 @@
         </div>
 
         <div id="congrats-screen" class="screen hidden">
-            <div style="font-size: 80px;">🎉</div>
-            <h1 style="color: var(--text);">太棒了！完成練習！</h1>
-            <button onclick="location.reload()">再玩一次</button>
+            <div style="font-size: 100px; margin-bottom: 20px;">🎉</div>
+            <h1 style="color: var(--text); font-size: 40px;">太棒了！完成練習！</h1>
+            <button onclick="location.reload()">再玩一次 / Play Again</button>
         </div>
     </div>
 
     <script>
+        // 1. Configuration: Added 'dir' property for left-facing vehicles
         const transportItems = [
-            { id: 'bus', img: 'bus.png', voice: 'bus.mp3', type: 'drive' },
-            { id: 'tram', img: 'tram.png', voice: 'tram.mp3', type: 'drive' },
-            { id: 'minibus', img: 'minibus.png', voice: 'minibus.mp3', type: 'drive' },
-            { id: 'taxi', img: 'taxi.png', voice: 'taxi.mp3', type: 'drive' },
-            { id: 'mtr', img: 'mtr.png', voice: 'mtr.mp3', type: 'drive' },
-            { id: 'plane', img: 'plane.png', voice: 'plane.mp3', type: 'fly' }
+            { id: 'bus', img: 'bus.png', voice: 'bus.mp3', type: 'drive', dir: 'left' },
+            { id: 'tram', img: 'tram.png', voice: 'tram.mp3', type: 'drive', dir: 'left' },
+            { id: 'minibus', img: 'minibus.png', voice: 'minibus.mp3', type: 'drive', dir: 'left' },
+            { id: 'taxi', img: 'taxi.png', voice: 'taxi.mp3', type: 'drive', dir: 'right' },
+            { id: 'mtr', img: 'mtr.png', voice: 'mtr.mp3', type: 'drive', dir: 'right' },
+            { id: 'plane', img: 'plane.png', voice: 'plane.mp3', type: 'fly', dir: 'right' }
         ];
 
         let trials = [];
@@ -122,30 +146,30 @@
         let isLocked = false;
         let currentAudio = null;
 
+        // Sound Effects
         const sndCorrect = new Audio('assets/audio/correct.mp3');
         const sndIncorrect = new Audio('assets/audio/incorrect.mp3');
         const sndFanfare = new Audio('assets/audio/congrats_fanfare.mp3');
 
-        // Critical for iOS: Unlock audio on first user interaction
+        // Critical for iOS: Unlock audio context via user gesture
         function unlockAudio() {
-            const sounds = [sndCorrect, sndIncorrect, sndFanfare];
-            sounds.forEach(s => {
-                s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(e => {});
+            const silentSounds = [sndCorrect, sndIncorrect, sndFanfare];
+            silentSounds.forEach(s => {
+                s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(e => console.log("Audio unlock waiting..."));
             });
         }
 
-        document.getElementById('btn-ready').addEventListener('click', () => {
-            unlockAudio();
-            // If already landscape, this button just hides the overlay
-            // Screen orientation CSS handles the rest
-        });
-
+        // Event Listeners
+        document.getElementById('btn-ready').addEventListener('click', unlockAudio);
+        
         document.getElementById('btn-start').addEventListener('click', () => {
+            unlockAudio(); // Double ensure for iOS
             setupGame();
             showScreen('game-screen');
             startTrial();
         });
 
+        // Initialize 10 trials
         function setupGame() {
             let deck = [...transportItems].sort(() => Math.random() - 0.5);
             trials = [...deck];
@@ -156,6 +180,7 @@
             }
         }
 
+        // Start a single round
         function startTrial() {
             if (currentTrialIndex >= 10) {
                 showScreen('congrats-screen');
@@ -165,46 +190,74 @@
             isLocked = false;
             document.getElementById('current-count').innerText = currentTrialIndex + 1;
             renderGrid();
-            setTimeout(() => { playVoice(trials[currentTrialIndex].voice); }, 500);
+            
+            // Delay voice slightly to let grid load
+            setTimeout(() => { playVoice(trials[currentTrialIndex].voice); }, 600);
         }
 
+        // Create the 3x2 grid
         function renderGrid() {
             const grid = document.getElementById('items-grid');
             grid.innerHTML = '';
-            [...transportItems].sort(() => Math.random() - 0.5).forEach(item => {
+            
+            // Shuffle display order
+            const displayOrder = [...transportItems].sort(() => Math.random() - 0.5);
+            
+            displayOrder.forEach(item => {
                 const container = document.createElement('div');
                 container.className = 'item-container';
                 container.onclick = () => handleChoice(item, container);
+                
                 const img = document.createElement('img');
                 img.src = `assets/images/${item.img}`;
                 img.className = 'transport-img';
+                img.alt = item.id;
+                
                 container.appendChild(img);
                 grid.appendChild(container);
             });
         }
 
+        // Interaction logic
         function handleChoice(item, element) {
             if (isLocked) return;
+            
             const target = trials[currentTrialIndex];
             if (item.id === target.id) {
                 isLocked = true;
+                if (currentAudio) currentAudio.pause();
                 sndCorrect.play();
-                element.querySelector('.transport-img').classList.add(item.type === 'fly' ? 'fly-out' : 'drive-out');
+                
+                // Determine animation based on 'type' and 'dir'
+                const img = element.querySelector('.transport-img');
+                let animClass = 'drive-out'; // Default Right
+                
+                if (item.type === 'fly') {
+                    animClass = 'fly-out';
+                } else if (item.dir === 'left') {
+                    animClass = 'drive-out-left';
+                }
+                
+                img.classList.add(animClass);
+                
                 currentTrialIndex++;
-                setTimeout(startTrial, 1200);
+                setTimeout(startTrial, 1300);
             } else {
+                sndIncorrect.currentTime = 0;
                 sndIncorrect.play();
                 element.classList.add('shake');
                 setTimeout(() => element.classList.remove('shake'), 400);
             }
         }
 
+        // Audio helper
         function playVoice(fileName) {
             if (currentAudio) { currentAudio.pause(); }
             currentAudio = new Audio(`assets/audio/${fileName}`);
-            currentAudio.play().catch(() => console.log("Audio waiting for interaction"));
+            currentAudio.play().catch(e => console.error("Playback blocked. Tap Start button first."));
         }
 
+        // Screen switching
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
