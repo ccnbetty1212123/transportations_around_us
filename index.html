@@ -1,1 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>交通工具練習</title>
+    <style>
+        :root { --bg: #f0f4f8; --btn: #4caf50; }
+        body, html { 
+            margin: 0; padding: 0; width: 100vw; height: 100vh; 
+            overflow: hidden; font-family: 'PingFang HK', sans-serif; 
+            background: var(--bg); touch-action: manipulation;
+        }
 
+        /* Orientation Logic */
+        #orientation-overlay { 
+            position: fixed; inset: 0; background: #333; color: white; 
+            display: flex; flex-direction: column; align-items: center; 
+            justify-content: center; z-index: 9999; text-align: center; 
+        }
+        @media screen and (orientation: landscape) { #orientation-overlay { display: none; } }
+
+        .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .hidden { display: none !important; }
+
+        button { 
+            padding: 15px 50px; font-size: 28px; cursor: pointer; 
+            background: var(--btn); color: white; border: none; 
+            border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        button:active { transform: scale(0.95); }
+
+        /* Game Layout */
+        #items-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            grid-template-rows: repeat(2, 1fr); 
+            gap: 20px; width: 85%; height: 75%; 
+        }
+        .item-container { 
+            display: flex; justify-content: center; align-items: center; 
+            background: white; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            cursor: pointer; position: relative; overflow: hidden;
+        }
+
+        .transport-img { 
+            width: 80%; height: 80%; object-fit: contain; 
+            transition: transform 0.2s ease-in;
+        }
+
+        /* Animations */
+        .drive-out { transform: translateX(500px) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
+        .fly-out { transform: translate(500px, -300px) rotate(-15deg) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
+        .shake { animation: shake 0.4s; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        #progress { position: absolute; top: 15px; font-size: 24px; font-weight: bold; color: #2e7d32; }
+        #congrats-emoji { font-size: 100px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="orientation-overlay"><h2>請將螢幕橫置以進行遊戲 🔄</h2></div>
+
+    <div id="welcome-screen" class="screen">
+        <h1 style="color: #2e7d32; font-size: 40px;">交通工具練習</h1>
+        <p style="font-size: 20px; color: #666;">聽一聽，選出正確的交通工具</p>
+        <button id="btn-start">開始遊戲</button>
+    </div>
+
+    <div id="game-screen" class="screen hidden">
+        <div id="progress">第 <span id="current-count">1</span> / 10 題</div>
+        <div id="items-grid"></div>
+    </div>
+
+    <div id="congrats-screen" class="screen hidden">
+        <div id="congrats-emoji">🎉🥳🎊</div>
+        <h1 style="color: #2e7d32;">太棒了！完成練習！</h1>
+        <button onclick="location.reload()">再玩一次</button>
+    </div>
+
+    <script>
+        const transportItems = [
+            { id: 'bus', img: 'bus.png', voice: 'bus.mp3', type: 'drive' },
+            { id: 'tram', img: 'tram.png', voice: 'tram.mp3', type: 'drive' },
+            { id: 'minibus', img: 'minibus.png', voice: 'minibus.mp3', type: 'drive' },
+            { id: 'taxi', img: 'taxi.png', voice: 'taxi.mp3', type: 'drive' },
+            { id: 'mtr', img: 'mtr.png', voice: 'mtr.mp3', type: 'drive' },
+            { id: 'plane', img: 'plane.png', voice: 'plane.mp3', type: 'fly' }
+        ];
+
+        let trials = [];
+        let currentTrialIndex = 0;
+        let currentTarget = null;
+        let isLocked = false;
+        let currentAudio = null;
+
+        const sndCorrect = new Audio('assets/audio/correct.mp3');
+        const sndIncorrect = new Audio('assets/audio/incorrect.mp3');
+        const sndFanfare = new Audio('assets/audio/congrats_fanfare.mp3');
+
+        // Logic to build 10 trials with constraints
+        function setupGame() {
+            // 1. Ensure all 6 appear once
+            let deck = [...transportItems].sort(() => Math.random() - 0.5);
+            trials = [...deck];
+
+            // 2. Fill to 10 ensuring no consecutive repeats
+            while (trials.length < 10) {
+                let lastItem = trials[trials.length - 1];
+                let possibleOptions = transportItems.filter(i => i.id !== lastItem.id);
+                let randomChoice = possibleOptions[Math.floor(Math.random() * possibleOptions.length)];
+                trials.push(randomChoice);
+            }
+        }
+
+        function startTrial() {
+            if (currentTrialIndex >= 10) {
+                showScreen('congrats-screen');
+                sndFanfare.play();
+                return;
+            }
+
+            isLocked = false;
+            currentTarget = trials[currentTrialIndex];
+            document.getElementById('current-count').innerText = currentTrialIndex + 1;
+            
+            renderGrid();
+            
+            // Voice: "我要搭..." + target word
+            setTimeout(() => { playVoice(currentTarget.voice); }, 500);
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('items-grid');
+            grid.innerHTML = '';
+            
+            // Randomize display order for the grid
+            const displayOrder = [...transportItems].sort(() => Math.random() - 0.5);
+            
+            displayOrder.forEach(item => {
+                const container = document.createElement('div');
+                container.className = 'item-container';
+                container.onclick = () => handleChoice(item, container);
+                
+                const img = document.createElement('img');
+                img.src = `assets/images/${item.img}`;
+                img.className = 'transport-img';
+                img.alt = item.id;
+                
+                container.appendChild(img);
+                grid.appendChild(container);
+            });
+        }
+
+        function handleChoice(item, element) {
+            if (isLocked) return;
+
+            const img = element.querySelector('.transport-img');
+
+            if (item.id === currentTarget.id) {
+                // Correct
+                isLocked = true;
+                sndCorrect.play();
+                
+                // Animate driving or flying out
+                const animClass = item.type === 'fly' ? 'fly-out' : 'drive-out';
+                img.classList.add(animClass);
+
+                currentTrialIndex++;
+                setTimeout(startTrial, 1200);
+            } else {
+                // Incorrect
+                sndIncorrect.play();
+                element.classList.add('shake');
+                setTimeout(() => element.classList.remove('shake'), 400);
+            }
+        }
+
+        function playVoice(fileName) {
+            if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+            // Assuming your audio files are named like 'bus.mp3' 
+            // and you have a prefix audio "我要搭" combined or separate.
+            // If separate, you'd play "prefix.mp3" then "fileName"
+            currentAudio = new Audio(`assets/audio/${fileName}`);
+            currentAudio.play().catch(e => console.log("Audio play blocked"));
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        document.getElementById('btn-start').addEventListener('click', () => {
+            // Unlock audio context for mobile browsers
+            [sndCorrect, sndIncorrect, sndFanfare].forEach(s => {
+                s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(()=>{});
+            });
+            setupGame();
+            showScreen('game-screen');
+            startTrial();
+        });
+    </script>
+</body>
+</html>
