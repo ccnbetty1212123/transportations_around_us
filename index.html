@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>交通工具練習 Transport Exercise</title>
+    <title>交通工具練習 Transport Practice</title>
     <style>
         :root { 
             --bg: #f0f4f8; 
@@ -41,7 +41,6 @@
         .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .hidden { display: none !important; }
 
-        /* Logic to show/hide based on orientation */
         @media screen and (orientation: portrait) {
             #game-content { display: none; }
             #prep-screen { display: flex; }
@@ -84,12 +83,9 @@
             transition: transform 0.2s; 
         }
 
-        /* Animation Classes */
-        /* Drive Right (Default) */
+        /* Animations */
         .drive-out { transform: translateX(100vw) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
-        /* Drive Left (Bus, Tram, Minibus) */
         .drive-out-left { transform: translateX(-100vw) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
-        /* Fly Away */
         .fly-out { transform: translate(100vw, -100vh) rotate(-15deg) !important; opacity: 0; transition: transform 0.8s ease-in, opacity 0.5s; }
         
         .shake { animation: shake 0.4s; }
@@ -131,7 +127,6 @@
     </div>
 
     <script>
-        // 1. Configuration: Added 'dir' property for left-facing vehicles
         const transportItems = [
             { id: 'bus', img: 'bus.png', voice: 'bus.mp3', type: 'drive', dir: 'left' },
             { id: 'tram', img: 'tram.png', voice: 'tram.mp3', type: 'drive', dir: 'left' },
@@ -146,30 +141,32 @@
         let isLocked = false;
         let currentAudio = null;
 
-        // Sound Effects
         const sndCorrect = new Audio('assets/audio/correct.mp3');
         const sndIncorrect = new Audio('assets/audio/incorrect.mp3');
         const sndFanfare = new Audio('assets/audio/congrats_fanfare.mp3');
 
-        // Critical for iOS: Unlock audio context via user gesture
+        // Unlock audio silently for mobile browsers
         function unlockAudio() {
             const silentSounds = [sndCorrect, sndIncorrect, sndFanfare];
             silentSounds.forEach(s => {
-                s.play().then(() => { s.pause(); s.currentTime = 0; }).catch(e => console.log("Audio unlock waiting..."));
+                const originalVol = s.volume;
+                s.volume = 0;
+                s.play().then(() => {
+                    s.pause();
+                    s.currentTime = 0;
+                    s.volume = originalVol;
+                }).catch(e => console.log("Audio priming..."));
             });
         }
 
-        // Event Listeners
         document.getElementById('btn-ready').addEventListener('click', unlockAudio);
-        
         document.getElementById('btn-start').addEventListener('click', () => {
-            unlockAudio(); // Double ensure for iOS
+            unlockAudio();
             setupGame();
             showScreen('game-screen');
             startTrial();
         });
 
-        // Initialize 10 trials
         function setupGame() {
             let deck = [...transportItems].sort(() => Math.random() - 0.5);
             trials = [...deck];
@@ -180,7 +177,6 @@
             }
         }
 
-        // Start a single round
         function startTrial() {
             if (currentTrialIndex >= 10) {
                 showScreen('congrats-screen');
@@ -191,55 +187,41 @@
             document.getElementById('current-count').innerText = currentTrialIndex + 1;
             renderGrid();
             
-            // Delay voice slightly to let grid load
+            if (currentAudio) { currentAudio.pause(); currentAudio = null; }
             setTimeout(() => { playVoice(trials[currentTrialIndex].voice); }, 600);
         }
 
-        // Create the 3x2 grid
         function renderGrid() {
             const grid = document.getElementById('items-grid');
             grid.innerHTML = '';
-            
-            // Shuffle display order
             const displayOrder = [...transportItems].sort(() => Math.random() - 0.5);
             
             displayOrder.forEach(item => {
                 const container = document.createElement('div');
                 container.className = 'item-container';
                 container.onclick = () => handleChoice(item, container);
-                
                 const img = document.createElement('img');
                 img.src = `assets/images/${item.img}`;
                 img.className = 'transport-img';
-                img.alt = item.id;
-                
                 container.appendChild(img);
                 grid.appendChild(container);
             });
         }
 
-        // Interaction logic
         function handleChoice(item, element) {
             if (isLocked) return;
-            
             const target = trials[currentTrialIndex];
+
             if (item.id === target.id) {
                 isLocked = true;
                 if (currentAudio) currentAudio.pause();
                 sndCorrect.play();
                 
-                // Determine animation based on 'type' and 'dir'
                 const img = element.querySelector('.transport-img');
-                let animClass = 'drive-out'; // Default Right
-                
-                if (item.type === 'fly') {
-                    animClass = 'fly-out';
-                } else if (item.dir === 'left') {
-                    animClass = 'drive-out-left';
-                }
+                let animClass = (item.type === 'fly') ? 'fly-out' : 
+                                (item.dir === 'left' ? 'drive-out-left' : 'drive-out');
                 
                 img.classList.add(animClass);
-                
                 currentTrialIndex++;
                 setTimeout(startTrial, 1300);
             } else {
@@ -250,14 +232,12 @@
             }
         }
 
-        // Audio helper
         function playVoice(fileName) {
             if (currentAudio) { currentAudio.pause(); }
             currentAudio = new Audio(`assets/audio/${fileName}`);
-            currentAudio.play().catch(e => console.error("Playback blocked. Tap Start button first."));
+            currentAudio.play().catch(e => console.log("Voice blocked"));
         }
 
-        // Screen switching
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
