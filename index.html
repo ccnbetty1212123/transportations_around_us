@@ -20,7 +20,7 @@
             background: var(--bg); touch-action: manipulation;
         }
 
-        /* Preparation & Orientation Overlay */
+        /* Preparation Overlay */
         #prep-screen {
             position: fixed; inset: 0; background: white; 
             display: flex; flex-direction: column; align-items: center; 
@@ -64,7 +64,6 @@
         }
         button:active { transform: scale(0.95); background: var(--btn-hover); }
 
-        /* Audio Button Style */
         .btn-audio {
             background: var(--btn-audio);
             padding: 10px 35px;
@@ -163,33 +162,33 @@
         let isLocked = false;
         let currentAudio = null;
 
+        // Global Game Sounds
         const sndCorrect = new Audio('assets/audio/correct.mp3');
         const sndIncorrect = new Audio('assets/audio/incorrect.mp3');
         const sndFanfare = new Audio('assets/audio/congrats_fanfare.mp3');
 
-        // Silent unlock keeps assets ready without creating any audible sound on landing
-        function unlockAudio() {
-            const silentSounds = [sndCorrect, sndIncorrect, sndFanfare];
-            silentSounds.forEach(s => {
-                const originalVol = s.volume;
-                s.volume = 0;
-                s.play().then(() => {
-                    s.pause();
-                    s.currentTime = 0;
-                    s.volume = originalVol;
-                }).catch(e => console.log("Audio priming..."));
-            });
+        /**
+         * CLEAN AUDIO UNLOCK:
+         * Uses a tiny Base64 string of absolute silence to satisfy browser requirements.
+         * This prevents "Correct/Incorrect" sounds from leaking during game entry.
+         */
+        function unlockAudioEngine() {
+            const silentSrc = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== ";
+            const unlocker = new Audio(silentSrc);
+            unlocker.play().then(() => {
+                console.log("Audio pipeline active.");
+            }).catch(err => console.log("Unlock failed."));
         }
 
-        document.getElementById('btn-ready').addEventListener('click', unlockAudio);
+        document.getElementById('btn-ready').addEventListener('click', unlockAudioEngine);
+
         document.getElementById('btn-start').addEventListener('click', () => {
-            unlockAudio();
+            unlockAudioEngine();
             setupGame();
             showScreen('game-screen');
             startTrial(); 
         });
 
-        // Event listener for the new manual audio trigger
         document.getElementById('btn-play-voice').addEventListener('click', () => {
             if (trials[currentTrialIndex]) {
                 playVoice(trials[currentTrialIndex].voice);
@@ -216,11 +215,7 @@
             document.getElementById('current-count').innerText = currentTrialIndex + 1;
             renderGrid();
             
-            // Clean up any remaining audio objects from previous rounds
             if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-            
-            // REMOVED: The setTimeout automated play logic has been completely removed.
-            // The screen loads silently. The player must click the "🔊 播放題目聲音" button to hear the sound.
         }
 
         function renderGrid() {
@@ -247,6 +242,9 @@
             if (item.id === target.id) {
                 isLocked = true;
                 if (currentAudio) currentAudio.pause();
+                
+                // Play Correct sound
+                sndCorrect.currentTime = 0;
                 sndCorrect.play();
                 
                 const img = element.querySelector('.transport-img');
@@ -257,6 +255,7 @@
                 currentTrialIndex++;
                 setTimeout(startTrial, 1300);
             } else {
+                // Play Incorrect sound
                 sndIncorrect.currentTime = 0;
                 sndIncorrect.play();
                 element.classList.add('shake');
@@ -267,7 +266,7 @@
         function playVoice(fileName) {
             if (currentAudio) { currentAudio.pause(); }
             currentAudio = new Audio(`assets/audio/${fileName}`);
-            currentAudio.play().catch(e => console.log("Voice blocked"));
+            currentAudio.play().catch(e => console.log("Voice blocked by browser"));
         }
 
         function showScreen(id) {
