@@ -9,6 +9,8 @@
             --bg: #f0f4f8; 
             --btn: #4caf50; 
             --btn-hover: #45a049;
+            --btn-audio: #0288d1;
+            --btn-audio-hover: #01579b;
             --text: #2e7d32; 
         }
 
@@ -53,7 +55,7 @@
 
         /* Buttons */
         button { 
-            padding: 18px 60px; font-size: 26px; cursor: pointer; 
+            padding: 15px 45px; font-size: 24px; cursor: pointer; 
             background: var(--btn); color: white; border: none; 
             border-radius: 50px; box-shadow: 0 6px 15px rgba(0,0,0,0.15);
             transition: transform 0.1s, background 0.2s;
@@ -62,14 +64,24 @@
         }
         button:active { transform: scale(0.95); background: var(--btn-hover); }
 
+        /* Audio Button Style */
+        .btn-audio {
+            background: var(--btn-audio);
+            padding: 10px 35px;
+            font-size: 20px;
+            margin-top: 10px;
+            margin-bottom: -10px;
+        }
+        .btn-audio:active { background: var(--btn-audio-hover); }
+
         /* Game Grid */
         #items-grid { 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
             grid-template-rows: repeat(2, 1fr); 
-            gap: 20px; 
-            width: 85%; height: 75%; 
-            margin-top: 30px;
+            gap: 15px; 
+            width: 85%; height: 65%; 
+            margin-top: 20px;
         }
         .item-container { 
             display: flex; justify-content: center; align-items: center; 
@@ -95,7 +107,14 @@
             75% { transform: translateX(12px); }
         }
 
-        #progress { position: absolute; top: 15px; font-size: 22px; font-weight: bold; color: var(--text); }
+        #ui-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        #progress { font-size: 22px; font-weight: bold; color: var(--text); }
     </style>
 </head>
 <body>
@@ -110,12 +129,15 @@
     <div id="game-content">
         <div id="welcome-screen" class="screen">
             <h1 style="color: var(--text); font-size: 48px; margin-bottom: 10px;">交通工具練習</h1>
-            <p style="font-size: 22px; color: #555; margin-bottom: 40px;">聽一聽，選出正確的交通工具</p>
+            <p style="font-size: 22px; color: #555; margin-bottom: 40px;">按一按聲音按鈕，選出正確的交通工具</p>
             <button id="btn-start">進入練習</button>
         </div>
 
         <div id="game-screen" class="screen hidden">
-            <div id="progress">第 <span id="current-count">1</span> / 10 題</div>
+            <div id="ui-header">
+                <div id="progress">第 <span id="current-count">1</span> / 10 題</div>
+                <button id="btn-play-voice" class="btn-audio">🔊 播放題目聲音 / Play Voice</button>
+            </div>
             <div id="items-grid"></div>
         </div>
 
@@ -145,7 +167,7 @@
         const sndIncorrect = new Audio('assets/audio/incorrect.mp3');
         const sndFanfare = new Audio('assets/audio/congrats_fanfare.mp3');
 
-        // Unlock audio silently for mobile browsers
+        // Silent unlock keeps assets ready without creating any audible sound on landing
         function unlockAudio() {
             const silentSounds = [sndCorrect, sndIncorrect, sndFanfare];
             silentSounds.forEach(s => {
@@ -164,7 +186,14 @@
             unlockAudio();
             setupGame();
             showScreen('game-screen');
-            startTrial();
+            startTrial(); 
+        });
+
+        // Event listener for the new manual audio trigger
+        document.getElementById('btn-play-voice').addEventListener('click', () => {
+            if (trials[currentTrialIndex]) {
+                playVoice(trials[currentTrialIndex].voice);
+            }
         });
 
         function setupGame() {
@@ -187,8 +216,11 @@
             document.getElementById('current-count').innerText = currentTrialIndex + 1;
             renderGrid();
             
+            // Clean up any remaining audio objects from previous rounds
             if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-            setTimeout(() => { playVoice(trials[currentTrialIndex].voice); }, 600);
+            
+            // REMOVED: The setTimeout automated play logic has been completely removed.
+            // The screen loads silently. The player must click the "🔊 播放題目聲音" button to hear the sound.
         }
 
         function renderGrid() {
