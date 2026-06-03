@@ -170,7 +170,6 @@
         /**
          * CLEAN AUDIO UNLOCK:
          * Uses a tiny Base64 string of absolute silence to satisfy browser requirements.
-         * This prevents game sounds from accidentally leaking during screen transitions.
          */
         function unlockAudioEngine() {
             const silentSrc = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== ";
@@ -209,7 +208,10 @@
         function startTrial() {
             if (currentTrialIndex >= 10) {
                 showScreen('congrats-screen');
-                sndFanfare.play();
+                // Ensure correct sound finishes and won't interrupt fanfare
+                sndCorrect.pause();
+                sndCorrect.currentTime = 0;
+                sndFanfare.play().catch(e => console.log(e));
                 return;
             }
             isLocked = false;
@@ -219,12 +221,12 @@
             if (currentAudio) { currentAudio.pause(); currentAudio = null; }
 
             // AUTOMATIC PLAYBACK FOR THE CURRENT TRIAL:
-            // Plays after a brief 600ms cushion so the visual grid updates cleanly first.
+            // Plays after an 800ms cushion so the visual grid updates cleanly and correct sound finishes.
             setTimeout(() => {
                 if (!isLocked && trials[currentTrialIndex]) {
                     playVoice(trials[currentTrialIndex].voice);
                 }
-            }, 600);
+            }, 800);
         }
 
         function renderGrid() {
@@ -250,10 +252,17 @@
 
             if (item.id === target.id) {
                 isLocked = true;
-                if (currentAudio) currentAudio.pause();
                 
+                // Pause voice prompt immediately
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.currentTime = 0;
+                }
+                
+                // Force reset and replay correct sound cleanly without hardware track bleeding
+                sndCorrect.pause();
                 sndCorrect.currentTime = 0;
-                sndCorrect.play();
+                sndCorrect.play().catch(e => console.log("Audio play blocked"));
                 
                 const img = element.querySelector('.transport-img');
                 let animClass = (item.type === 'fly') ? 'fly-out' : 
@@ -261,10 +270,14 @@
                 
                 img.classList.add(animClass);
                 currentTrialIndex++;
-                setTimeout(startTrial, 1300);
+                
+                // Safe padding (1500ms) to allow the success sound to wrap up
+                setTimeout(startTrial, 1500);
             } else {
+                sndIncorrect.pause();
                 sndIncorrect.currentTime = 0;
-                sndIncorrect.play();
+                sndIncorrect.play().catch(e => console.log(e));
+                
                 element.classList.add('shake');
                 setTimeout(() => element.classList.remove('shake'), 400);
             }
@@ -275,6 +288,10 @@
                 currentAudio.pause(); 
                 currentAudio.currentTime = 0; 
             }
+            // Explicitly force drop the correct sound if it is lingering into the next trial voice channel
+            sndCorrect.pause();
+            sndCorrect.currentTime = 0;
+
             currentAudio = new Audio(`assets/audio/${fileName}`);
             currentAudio.play().catch(e => console.log("Voice blocked by browser"));
         }
