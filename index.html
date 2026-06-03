@@ -128,14 +128,14 @@
     <div id="game-content">
         <div id="welcome-screen" class="screen">
             <h1 style="color: var(--text); font-size: 48px; margin-bottom: 10px;">交通工具練習</h1>
-            <p style="font-size: 22px; color: #555; margin-bottom: 40px;">按一按聲音按鈕，聽完選出正確的交通工具</p>
+            <p style="font-size: 22px; color: #555; margin-bottom: 40px;">聽一聽題目，選出正確的交通工具</p>
             <button id="btn-start">進入練習</button>
         </div>
 
         <div id="game-screen" class="screen hidden">
             <div id="ui-header">
                 <div id="progress">第 <span id="current-count">1</span> / 10 題</div>
-                <button id="btn-play-voice" class="btn-audio">🔊 播放題目聲音 / Play Voice</button>
+                <button id="btn-play-voice" class="btn-audio">🔊 重播題目聲音 / Replay Voice</button>
             </div>
             <div id="items-grid"></div>
         </div>
@@ -152,4 +152,137 @@
             { id: 'bus', img: 'bus.png', voice: 'bus.mp3', type: 'drive', dir: 'left' },
             { id: 'tram', img: 'tram.png', voice: 'tram.mp3', type: 'drive', dir: 'left' },
             { id: 'minibus', img: 'minibus.png', voice: 'minibus.mp3', type: 'drive', dir: 'left' },
-            { id: 'taxi', img: 'taxi.png
+            { id: 'taxi', img: 'taxi.png', voice: 'taxi.mp3', type: 'drive', dir: 'right' },
+            { id: 'mtr', img: 'mtr.png', voice: 'mtr.mp3', type: 'drive', dir: 'right' },
+            { id: 'plane', img: 'plane.png', voice: 'plane.mp3', type: 'fly', dir: 'right' }
+        ];
+
+        let trials = [];
+        let currentTrialIndex = 0;
+        let isLocked = false;
+        let currentAudio = null;
+
+        // Global Game Sounds
+        const sndCorrect = new Audio('assets/audio/correct.mp3');
+        const sndIncorrect = new Audio('assets/audio/incorrect.mp3');
+        const sndFanfare = new Audio('assets/audio/congrats_fanfare.mp3');
+
+        /**
+         * CLEAN AUDIO UNLOCK:
+         * Uses a tiny Base64 string of absolute silence to satisfy browser requirements.
+         * This prevents game sounds from accidentally leaking during screen transitions.
+         */
+        function unlockAudioEngine() {
+            const silentSrc = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA== ";
+            const unlocker = new Audio(silentSrc);
+            unlocker.play().then(() => {
+                console.log("Audio pipeline active.");
+            }).catch(err => console.log("Unlock failed."));
+        }
+
+        document.getElementById('btn-ready').addEventListener('click', unlockAudioEngine);
+
+        document.getElementById('btn-start').addEventListener('click', () => {
+            unlockAudioEngine();
+            setupGame();
+            showScreen('game-screen');
+            startTrial(); 
+        });
+
+        // Manual backup button to repeat the question item
+        document.getElementById('btn-play-voice').addEventListener('click', () => {
+            if (trials[currentTrialIndex] && !isLocked) {
+                playVoice(trials[currentTrialIndex].voice);
+            }
+        });
+
+        function setupGame() {
+            let deck = [...transportItems].sort(() => Math.random() - 0.5);
+            trials = [...deck];
+            while (trials.length < 10) {
+                let lastItem = trials[trials.length - 1];
+                let possible = transportItems.filter(i => i.id !== lastItem.id);
+                trials.push(possible[Math.floor(Math.random() * possible.length)]);
+            }
+        }
+
+        function startTrial() {
+            if (currentTrialIndex >= 10) {
+                showScreen('congrats-screen');
+                sndFanfare.play();
+                return;
+            }
+            isLocked = false;
+            document.getElementById('current-count').innerText = currentTrialIndex + 1;
+            renderGrid();
+            
+            if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+
+            // AUTOMATIC PLAYBACK FOR THE CURRENT TRIAL:
+            // Plays after a brief 600ms cushion so the visual grid updates cleanly first.
+            setTimeout(() => {
+                if (!isLocked && trials[currentTrialIndex]) {
+                    playVoice(trials[currentTrialIndex].voice);
+                }
+            }, 600);
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('items-grid');
+            grid.innerHTML = '';
+            const displayOrder = [...transportItems].sort(() => Math.random() - 0.5);
+            
+            displayOrder.forEach(item => {
+                const container = document.createElement('div');
+                container.className = 'item-container';
+                container.onclick = () => handleChoice(item, container);
+                const img = document.createElement('img');
+                img.src = `assets/images/${item.img}`;
+                img.className = 'transport-img';
+                container.appendChild(img);
+                grid.appendChild(container);
+            });
+        }
+
+        function handleChoice(item, element) {
+            if (isLocked) return;
+            const target = trials[currentTrialIndex];
+
+            if (item.id === target.id) {
+                isLocked = true;
+                if (currentAudio) currentAudio.pause();
+                
+                sndCorrect.currentTime = 0;
+                sndCorrect.play();
+                
+                const img = element.querySelector('.transport-img');
+                let animClass = (item.type === 'fly') ? 'fly-out' : 
+                                (item.dir === 'left' ? 'drive-out-left' : 'drive-out');
+                
+                img.classList.add(animClass);
+                currentTrialIndex++;
+                setTimeout(startTrial, 1300);
+            } else {
+                sndIncorrect.currentTime = 0;
+                sndIncorrect.play();
+                element.classList.add('shake');
+                setTimeout(() => element.classList.remove('shake'), 400);
+            }
+        }
+
+        function playVoice(fileName) {
+            if (currentAudio) { 
+                currentAudio.pause(); 
+                currentAudio.currentTime = 0; 
+            }
+            currentAudio = new Audio(`assets/audio/${fileName}`);
+            currentAudio.play().catch(e => console.log("Voice blocked by browser"));
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
